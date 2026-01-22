@@ -1,111 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ms">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duolingo-Style Learning Platform</title>
+    <title>Padankan Haiwan Safari</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Left Navigation Bar -->
-        <nav class="sidebar">
-            <div class="logo">
-                <div class="logo-icon">🦉</div>
-                <span class="logo-text">duolingo</span>
-            </div>
-            <ul class="nav-menu">
-                <li class="nav-item active">
-                    <span class="nav-icon">🏠</span>
-                    <span>LEARN</span>
-                </li>
-                <li class="nav-item">
-                    <span class="nav-icon">あ</span>
-                    <span>LETTERS</span>
-                </li>
-                <li class="nav-item">
-                    <span class="nav-icon">💪</span>
-                    <span>PRACTICE</span>
-                </li>
-                <li class="nav-item">
-                    <span class="nav-icon">🛡️</span>
-                    <span>LEADERBOARDS</span>
-                </li>
-                <li class="nav-item">
-                    <span class="nav-icon">🗺️</span>
-                    <span>QUESTS</span>
-                </li>
-                <li class="nav-item">
-                    <span class="nav-icon">🛍️</span>
-                    <span>SHOP</span>
-                </li>
-                <li class="nav-item">
-                    <span class="nav-icon">👤</span>
-                    <span>PROFILE</span>
-                </li>
-            </ul>
-        </nav>
-
-        <!-- Main Content Area -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="top-header">
-                <div class="header-stats">
-                    <span class="stat-item">🇯🇵 16</span>
-                    <span class="stat-item">🔥 697</span>
-                    <span class="stat-item">💎 509</span>
-                    <span class="stat-item">❤️ 5</span>
+    <div class="game-container">
+        <!-- Game Header -->
+        <div class="game-header">
+            <button class="info-btn">i</button>
+            <div class="level-display">Level <span id="currentLevel">1</span></div>
+            <div class="lives-score">
+                <div class="hearts" id="hearts">
+                    <span class="heart filled">❤️</span>
+                    <span class="heart filled">❤️</span>
+                    <span class="heart filled">❤️</span>
+                    <span class="heart">🤍</span>
                 </div>
-            </header>
+                <div class="star">⭐</div>
+            </div>
+        </div>
 
-            <!-- Section Banner -->
-            <div class="section-banner">
-                <div class="banner-content">
-                    <span class="section-info">← SECTION 2, UNIT 20</span>
-                    <h1 class="section-title">Discuss a family visit</h1>
-                    <button class="guidebook-btn">GUIDEBOOK 📖</button>
-                </div>
-            </div>
+        <!-- Instruction Bar -->
+        <div class="instruction-bar">
+            <span id="instructionText">Padankan 3 haiwan dengan gambar mereka</span>
+        </div>
 
-            <!-- Learning Path -->
-            <div class="learning-path-container">
-                <div class="learning-path" id="learningPath">
-                    <!-- Course buttons will be dynamically generated here -->
-                </div>
-            </div>
+        <!-- Game Board -->
+        <div class="game-board" id="gameBoard">
+            <!-- Cards will be generated dynamically -->
+        </div>
 
-            <!-- Course Content Area (hidden by default) -->
-            <div class="course-content" id="courseContent">
-                <button class="close-btn" id="closeBtn">✕ Close</button>
-                <div class="course-details" id="courseDetails">
-                    <!-- Course details will be shown here -->
-                </div>
-            </div>
-        </main>
-
-        <!-- Right Sidebar -->
-        <aside class="right-sidebar">
-            <div class="sidebar-box super-box">
-                <h3>Level up with Super</h3>
-                <p>No ads, personalized practice, and unlimited Legendary!</p>
-                <button class="cta-button">GET SUPER</button>
-            </div>
-            <div class="sidebar-box leaderboard-box">
-                <h3>Good job!</h3>
-                <p>You finished #14 and kept your position in the Emerald League</p>
-                <button class="cta-button">GO TO LEADERBOARDS</button>
-            </div>
-            <div class="sidebar-box quests-box">
-                <h3>Daily Quests</h3>
-                <div class="quest-item">
-                    <span>Earn 20 XP</span>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 75%"></div>
-                    </div>
-                    <span class="progress-text">15 / 20</span>
-                </div>
-            </div>
-        </aside>
+        <!-- Bottom Banner -->
+        <div class="bottom-banner">
+            <h1 class="game-title">PADANKAN HAIWAN SAFARI</h1>
+            <p class="game-subtitle">Padankan haiwan dengan bayang mereka di safari!</p>
+        </div>
     </div>
 
     <script src="script.js"></script>
