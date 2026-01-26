@@ -30,6 +30,188 @@ const koreanWords = [
     { word: '부산', parts: ['부', '산'], meaning: 'Busan' }
 ];
 
+// Sound Manager using Web Audio API
+class SoundManager {
+    constructor() {
+        this.audioContext = null;
+        this.sfxGain = null;
+        this.initAudio();
+    }
+
+    initAudio() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            // Create gain node for volume control
+            this.sfxGain = this.audioContext.createGain();
+            this.sfxGain.gain.value = 0.5; // SFX volume (50%)
+            this.sfxGain.connect(this.audioContext.destination);
+        } catch (e) {
+            console.warn('Web Audio API not supported:', e);
+        }
+    }
+
+    // Generate a tone (simple sound effect)
+    playTone(frequency, duration, type = 'sine', volume = 0.3) {
+        if (!this.audioContext) return;
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.type = type;
+            oscillator.frequency.value = frequency;
+            
+            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.sfxGain);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + duration);
+        } catch (e) {
+            console.warn('Error playing tone:', e);
+        }
+    }
+
+    // Play correct collectible sound
+    playCorrect() {
+        this.playTone(523.25, 0.1, 'sine', 0.3); // C5
+        setTimeout(() => this.playTone(659.25, 0.1, 'sine', 0.3), 50); // E5
+    }
+
+    // Play wrong collectible sound
+    playWrong() {
+        this.playTone(200, 0.2, 'sawtooth', 0.4);
+        setTimeout(() => this.playTone(150, 0.2, 'sawtooth', 0.4), 100);
+    }
+
+    // Play word complete sound
+    playWordComplete() {
+        this.playTone(523.25, 0.1, 'sine', 0.3); // C5
+        setTimeout(() => this.playTone(659.25, 0.1, 'sine', 0.3), 100); // E5
+        setTimeout(() => this.playTone(783.99, 0.1, 'sine', 0.3), 200); // G5
+        setTimeout(() => this.playTone(1046.50, 0.2, 'sine', 0.3), 300); // C6
+    }
+
+    // Play game over sound
+    playGameOver() {
+        this.playTone(200, 0.3, 'sawtooth', 0.5);
+        setTimeout(() => this.playTone(150, 0.3, 'sawtooth', 0.5), 200);
+        setTimeout(() => this.playTone(100, 0.4, 'sawtooth', 0.5), 400);
+    }
+
+    // Speak Chinese/Korean word using Web Speech API
+    speakWord(word, isKorean = false) {
+        if ('speechSynthesis' in window) {
+            try {
+                // Cancel any ongoing speech
+                window.speechSynthesis.cancel();
+                
+                // Helper function to actually speak (called after voices are loaded)
+                const doSpeak = () => {
+                    const utterance = new SpeechSynthesisUtterance(word);
+                    
+                    // Set language based on isKorean flag
+                    if (isKorean) {
+                        utterance.lang = 'ko-KR'; // Korean
+                    } else {
+                        utterance.lang = 'zh-CN'; // Mandarin Chinese
+                    }
+                    
+                    // Set voice properties
+                    utterance.rate = 0.9; // Slightly slower for clarity
+                    utterance.pitch = 1.0;
+                    utterance.volume = 0.7;
+                    
+                    // Get available voices
+                    const voices = window.speechSynthesis.getVoices();
+                    
+                    // Try to find a native voice for the language
+                    let preferredVoice = null;
+                    if (isKorean) {
+                        // Prefer Korean voices - try exact match first, then any Korean voice
+                        preferredVoice = voices.find(voice => 
+                            voice.lang === 'ko-KR' || voice.lang === 'ko'
+                        ) || voices.find(voice => 
+                            voice.lang.startsWith('ko')
+                        );
+                    } else {
+                        // Prefer Chinese voices - try exact match first, then any Chinese voice
+                        preferredVoice = voices.find(voice => 
+                            voice.lang === 'zh-CN' || voice.lang === 'zh-TW'
+                        ) || voices.find(voice => 
+                            voice.lang.startsWith('zh')
+                        );
+                    }
+                    
+                    if (preferredVoice) {
+                        utterance.voice = preferredVoice;
+                        console.log(`Using voice: ${preferredVoice.name} (${preferredVoice.lang}) for ${isKorean ? 'Korean' : 'Chinese'}`);
+                    } else {
+                        console.warn(`No ${isKorean ? 'Korean' : 'Chinese'} voice found, using default`);
+                    }
+                    
+                    // Speak the word
+                    window.speechSynthesis.speak(utterance);
+                };
+                
+                // Get voices - they might not be loaded yet
+                const voices = window.speechSynthesis.getVoices();
+                
+                // If voices are already loaded, speak immediately
+                if (voices.length > 0) {
+                    doSpeak();
+                } else {
+                    // Wait for voices to load
+                    const checkVoices = () => {
+                        const loadedVoices = window.speechSynthesis.getVoices();
+                        if (loadedVoices.length > 0) {
+                            doSpeak();
+                        } else {
+                            // Retry after a short delay
+                            setTimeout(checkVoices, 100);
+                        }
+                    };
+                    
+                    // Some browsers need the onvoiceschanged event
+                    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                        const onceHandler = () => {
+                            window.speechSynthesis.onvoiceschanged = null;
+                            doSpeak();
+                        };
+                        window.speechSynthesis.onvoiceschanged = onceHandler;
+                        // Also try immediately in case voices are already loaded
+                        setTimeout(() => {
+                            if (window.speechSynthesis.getVoices().length > 0) {
+                                window.speechSynthesis.onvoiceschanged = null;
+                                doSpeak();
+                            }
+                        }, 100);
+                    } else {
+                        checkVoices();
+                    }
+                }
+            } catch (e) {
+                console.warn('Error speaking word:', e);
+            }
+        } else {
+            console.warn('Speech synthesis not supported in this browser');
+        }
+    }
+
+    // Resume audio context (needed after user interaction)
+    resume() {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+    }
+}
+
+// Initialize sound manager
+const soundManager = new SoundManager();
+
 // Game state
 let gameState = 'start'; // 'start', 'reviewing', 'playing', 'gameover'
 let isPaused = false;
@@ -48,17 +230,36 @@ let keys = {};
 let touchStartX = 0;
 let touchStartY = 0;
 let isKorean = false; // Language toggle: false = Mandarin, true = Korean
+let health = 5; // Player health
+let playerHurtTime = 0; // Track when player was hurt (for red color effect)
+let animationFrameId = null; // Track animation frame ID to cancel old loops
 
 // Player class (top-down view)
 class Player {
     constructor() {
         this.width = 50;
         this.height = 50;
-        this.color = '#4CAF50';
+        this.baseColor = '#4CAF50'; // Normal green color
+        this.hurtColor = '#f44336'; // Red color when hurt
+        this.color = this.baseColor;
         this.speed = 5;
         // Position will be set after canvas is initialized
         this.x = 0;
         this.y = 0;
+    }
+    
+    hurt() {
+        // Set player to red color for 1 second
+        this.color = this.hurtColor;
+        playerHurtTime = Date.now();
+    }
+    
+    updateColor() {
+        // Check if 1 second has passed since being hurt
+        if (playerHurtTime > 0 && Date.now() - playerHurtTime >= 1000) {
+            this.color = this.baseColor;
+            playerHurtTime = 0;
+        }
     }
     
     initPosition() {
@@ -69,6 +270,9 @@ class Player {
     }
 
     update() {
+        // Update color (check if hurt effect should end)
+        this.updateColor();
+        
         // Only horizontal movement (left/right)
         if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
             this.x = Math.max(50, this.x - this.speed);
@@ -113,6 +317,7 @@ class Obstacle {
         this.width = 50;
         this.height = 50;
         this.speed = gameSpeed;
+        this.hit = false; // Track if obstacle has been hit
     }
 
     update() {
@@ -142,7 +347,7 @@ class Obstacle {
 
 // Collectible class (Chinese word parts, top-down view, moving from top to bottom)
 class Collectible {
-    constructor(x, part, lane = 0) {
+    constructor(x, part, lane = 0, isTarget = true) {
         // Lane determines horizontal position (0 = left, 1 = center, 2 = right)
         const laneWidth = canvas.width / 3;
         this.width = 80; // Increased to match larger text
@@ -151,6 +356,7 @@ class Collectible {
         this.y = -80; // Start from top
         this.speed = gameSpeed;
         this.part = part;
+        this.isTarget = isTarget; // true = target word part, false = distractor
         this.collected = false;
     }
 
@@ -192,6 +398,12 @@ class Collectible {
 
 // Initialize game
 function initGame() {
+    // CRITICAL: Cancel any existing game loop first to prevent multiple loops running
+    if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
     canvas = document.getElementById('gameCanvas');
     if (!canvas) {
         console.error('Canvas not found!');
@@ -211,12 +423,24 @@ function initGame() {
     collectedParts = [];
     obstacles = [];
     collectibles = [];
-    gameSpeed = 1.0;
-    gameStartTime = Date.now(); // Record game start time
+    health = 5; // Reset health to 5
+    isPaused = false; // Reset pause state
+    
+    // CRITICAL: Reset speed and start time FIRST, before any game loop runs
+    gameSpeed = 1.0; // Reset speed to 1.0
+    gameStartTime = Date.now(); // Record game start time - MUST be set here for speed calculation
+
+    // Update speed display immediately to show 1.00x
+    const speedValueEl = document.getElementById('speedValue');
+    if (speedValueEl) {
+        speedValueEl.textContent = '1.00x';
+    }
 
     // Create player
     player = new Player();
     player.initPosition();
+    player.color = player.baseColor; // Reset to normal color
+    playerHurtTime = 0; // Reset hurt timer
 
     // Setup touch controls
     setupTouchControls();
@@ -224,8 +448,16 @@ function initGame() {
     // Load first word
     loadWord(0);
 
-    // Show word review before starting
-    showWordReview();
+    // Update word review (always visible)
+    updateWordReview();
+
+    // Start game immediately (no pause)
+    gameState = 'playing';
+    
+    // Resume audio context
+    soundManager.resume();
+    
+    gameLoop();
 }
 
 // Get current word list based on language
@@ -277,8 +509,34 @@ function loadWord(index) {
         generateCollectibles(word);
     }
     
+    // Update word review display (always visible at bottom)
+    if (document.getElementById('targetWordReview')) {
+        updateWordReview();
+    }
+    
+    // Speak the word when it's loaded (with a small delay to ensure UI is ready)
+    setTimeout(() => {
+        soundManager.speakWord(word.word, isKorean);
+    }, 300);
+    
     // Update UI
     updateUI();
+}
+
+// Get distractor parts (parts not in current word)
+function getDistractorParts(currentWord) {
+    const wordList = getCurrentWordList();
+    const allParts = new Set();
+    
+    // Collect all parts from all words
+    wordList.forEach(w => {
+        w.parts.forEach(p => allParts.add(p));
+    });
+    
+    // Remove current word parts to get distractors
+    currentWord.parts.forEach(p => allParts.delete(p));
+    
+    return Array.from(allParts);
 }
 
 // Generate collectibles on the road (top-down, from top)
@@ -288,15 +546,74 @@ function generateCollectibles(word) {
         return;
     }
     
-    collectibles = [];
     const parts = [...word.parts];
+    const distractorParts = getDistractorParts(word);
     
-    // Generate collectibles in different lanes, spaced vertically
-    parts.forEach((part, index) => {
-        const lane = Math.floor(Math.random() * 3); // Random lane (0, 1, or 2)
-        const collectible = new Collectible(0, part, lane);
-        collectible.y = -40 - (index * 200); // Space them vertically
-        collectibles.push(collectible);
+    // Find which target parts still need to be generated
+    const neededParts = parts.filter(part => 
+        !collectedParts.includes(part) || 
+        collectedParts.filter(p => p === part).length < parts.filter(p => p === part).length
+    );
+    
+    // Create array of all collectibles to spawn (target + distractors)
+    const allCollectiblesToSpawn = [];
+    
+    // Add target word collectibles
+    neededParts.forEach(part => {
+        allCollectiblesToSpawn.push({ part: part, isTarget: true });
+    });
+    
+    // Add distractor collectibles (wrong parts) - 1-2 distractors
+    const numDistractors = Math.min(2, distractorParts.length);
+    for (let i = 0; i < numDistractors; i++) {
+        if (distractorParts.length > 0) {
+            const randomPart = distractorParts[Math.floor(Math.random() * distractorParts.length)];
+            allCollectiblesToSpawn.push({ part: randomPart, isTarget: false });
+        }
+    }
+    
+    // Shuffle the array to randomize order
+    for (let i = allCollectiblesToSpawn.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allCollectiblesToSpawn[i], allCollectiblesToSpawn[j]] = [allCollectiblesToSpawn[j], allCollectiblesToSpawn[i]];
+    }
+    
+    // Generate collectibles in random order
+    allCollectiblesToSpawn.forEach((item, index) => {
+        let collectible = null;
+        let attempts = 0;
+        const maxAttempts = 15;
+        
+        while (!collectible && attempts < maxAttempts) {
+            const lane = Math.floor(Math.random() * 3);
+            const laneWidth = canvas.width / 3;
+            const x = 50 + (lane * laneWidth) + (laneWidth / 2) - 40;
+            const y = -80 - (index * 250);
+            
+            // Check if this position would overlap with any obstacle or other collectible
+            if (!wouldOverlapWithObstacles(x, y, 80, 80)) {
+                collectible = new Collectible(0, item.part, lane, item.isTarget);
+                collectible.y = y;
+                collectibles.push(collectible);
+            }
+            attempts++;
+        }
+        
+        // If we couldn't find a non-overlapping position, place it in a different lane
+        if (!collectible) {
+            // Try all lanes systematically
+            for (let lane = 0; lane < 3; lane++) {
+                const laneWidth = canvas.width / 3;
+                const x = 50 + (lane * laneWidth) + (laneWidth / 2) - 40;
+                const y = -80 - (index * 250);
+                if (!wouldOverlapWithObstacles(x, y, 80, 80)) {
+                    collectible = new Collectible(0, item.part, lane, item.isTarget);
+                    collectible.y = y;
+                    collectibles.push(collectible);
+                    break;
+                }
+            }
+        }
     });
 }
 
@@ -310,19 +627,64 @@ function checkCollisions() {
             const collectibleBounds = collectible.getBounds();
             if (isColliding(playerBounds, collectibleBounds)) {
                 collectible.collected = true;
-                collectedParts.push(collectible.part);
-                score += 10;
-                updateUI();
-                checkWordComplete();
+                
+                const wordList = getCurrentWordList();
+                const currentWord = wordList[currentWordIndex];
+                
+                // Speak the collected part (whether target or distractor)
+                soundManager.speakWord(collectible.part, isKorean);
+                
+                // Check if this is a target word part
+                if (collectible.isTarget && currentWord.parts.includes(collectible.part)) {
+                    // Correct part collected
+                    collectedParts.push(collectible.part);
+                    score += 10;
+                    soundManager.playCorrect();
+                    updateUI();
+                    checkWordComplete();
+                } else {
+                    // Wrong part collected (distractor) - reduce health
+                    health--;
+                    player.hurt(); // Make player red for 1 second
+                    soundManager.playWrong();
+                    updateUI();
+                    
+                    // Check if game over
+                    if (health <= 0) {
+                        gameOver();
+                    }
+                }
             }
         }
     });
 
     // Check obstacles
-    obstacles.forEach(obstacle => {
-        const obstacleBounds = obstacle.getBounds();
-        if (isColliding(playerBounds, obstacleBounds)) {
-            gameOver();
+    obstacles.forEach((obstacle, index) => {
+        if (!obstacle.hit) {
+            const obstacleBounds = obstacle.getBounds();
+            if (isColliding(playerBounds, obstacleBounds)) {
+                // Mark obstacle as hit so player can pass through
+                obstacle.hit = true;
+                
+                // Reduce health
+                health--;
+                player.hurt(); // Make player red for 1 second
+                soundManager.playWrong(); // Play wrong sound
+                updateUI();
+                
+                // Remove obstacle after a short delay (so player can pass through)
+                setTimeout(() => {
+                    const obstacleIndex = obstacles.indexOf(obstacle);
+                    if (obstacleIndex > -1) {
+                        obstacles.splice(obstacleIndex, 1);
+                    }
+                }, 100);
+                
+                // Check if game over
+                if (health <= 0) {
+                    gameOver();
+                }
+            }
         }
     });
 }
@@ -351,6 +713,15 @@ function checkWordComplete() {
             // Word completed!
             wordsCompleted++;
             score += 50;
+            soundManager.playWordComplete();
+            
+            // Speak the completed word after a short delay (to not overlap with completion sound)
+            setTimeout(() => {
+                const wordList = getCurrentWordList();
+                const completedWord = wordList[currentWordIndex];
+                soundManager.speakWord(completedWord.word, isKorean);
+            }, 500);
+            
             updateUI();
             
             // Wait for last collectible to disappear, then show review
@@ -359,7 +730,7 @@ function checkWordComplete() {
     }
 }
 
-// Wait for the last collectible to disappear before showing review
+// Wait for the last collectible to disappear before loading next word
 function waitForLastPartToDisappear() {
     // Check if there are any visible collectibles still on screen
     const visibleCollectibles = collectibles.filter(c => 
@@ -372,8 +743,15 @@ function waitForLastPartToDisappear() {
             waitForLastPartToDisappear();
         }, 100);
     } else {
-        // All collectibles have disappeared, now show review
-        pauseGameAndShowReview();
+        // All collectibles have disappeared, load next word
+        const wordList = getCurrentWordList();
+        const nextIndex = currentWordIndex + 1;
+        if (nextIndex < wordList.length) {
+            loadWord(nextIndex);
+        } else {
+            // All words completed, restart
+            loadWord(0);
+        }
     }
 }
 
@@ -389,6 +767,23 @@ function isColliding(rect1, rect2) {
 function updateUI() {
     document.getElementById('score').textContent = score;
     
+    // Update health display
+    const healthDisplay = document.getElementById('healthDisplay');
+    if (healthDisplay) {
+        healthDisplay.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            const heart = document.createElement('span');
+            heart.className = 'health-heart';
+            if (i < health) {
+                heart.textContent = '❤️';
+                heart.classList.add('filled');
+            } else {
+                heart.textContent = '🤍';
+            }
+            healthDisplay.appendChild(heart);
+        }
+    }
+    
     // Update progress
     const wordList = getCurrentWordList();
     const currentWord = wordList[currentWordIndex];
@@ -396,26 +791,69 @@ function updateUI() {
     document.getElementById('progressFill').style.width = progress + '%';
 }
 
-// Check if collectible would overlap with obstacles
+// Check if collectible would overlap with obstacles or other collectibles
 function wouldOverlapWithObstacles(x, y, width, height) {
     const collectibleBounds = { x, y, width, height };
+    
+    // Check obstacles
     for (const obstacle of obstacles) {
         const obstacleBounds = obstacle.getBounds();
         if (isColliding(collectibleBounds, obstacleBounds)) {
             return true;
         }
     }
+    
+    // Check other collectibles (avoid placing target collectibles near obstacles)
+    for (const collectible of collectibles) {
+        const otherBounds = collectible.getBounds();
+        // Check if they're close vertically (within 100 pixels)
+        if (Math.abs(collectibleBounds.y - otherBounds.y) < 100) {
+            if (isColliding(collectibleBounds, otherBounds)) {
+                return true;
+            }
+        }
+    }
+    
     return false;
 }
 
 // Generate obstacles and collectibles (top-down, from top)
 function generateGameElements() {
-    // Generate obstacles randomly in different lanes
-    if (Math.random() < 0.01 && obstacles.length < 3) {
-        const lane = Math.floor(Math.random() * 3); // Random lane
-        const laneWidth = canvas.width / 3;
-        const x = 50 + (lane * laneWidth) + (laneWidth / 2) - 25;
-        obstacles.push(new Obstacle(x));
+    // Generate obstacles randomly in different lanes, but avoid placing near target collectibles
+    if (Math.random() < 0.008 && obstacles.length < 2) {
+        let obstacle = null;
+        let attempts = 0;
+        const maxAttempts = 20;
+        
+        while (!obstacle && attempts < maxAttempts) {
+            const lane = Math.floor(Math.random() * 3);
+            const laneWidth = canvas.width / 3;
+            const x = 50 + (lane * laneWidth) + (laneWidth / 2) - 25;
+            const y = -60;
+            
+            // Check if obstacle would be too close to any target collectible
+            let tooClose = false;
+            for (const collectible of collectibles) {
+                if (collectible.isTarget && !collectible.collected) {
+                    const collectibleBounds = collectible.getBounds();
+                    // Check if obstacle and collectible are in same lane and close vertically
+                    const obstacleLane = Math.floor((x - 50) / laneWidth);
+                    const collectibleLane = Math.floor((collectibleBounds.x - 50) / laneWidth);
+                    
+                    if (obstacleLane === collectibleLane && Math.abs(y - collectibleBounds.y) < 150) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!tooClose) {
+                obstacle = new Obstacle(x);
+                obstacle.y = y;
+                obstacles.push(obstacle);
+            }
+            attempts++;
+        }
     }
 
     // Remove off-screen obstacles (past bottom)
@@ -433,35 +871,8 @@ function generateGameElements() {
         );
         
         if (neededParts.length > 0) {
-            neededParts.forEach((part, index) => {
-                // Try to find a lane that doesn't overlap with obstacles
-                let collectible = null;
-                let attempts = 0;
-                const maxAttempts = 10;
-                
-                while (!collectible && attempts < maxAttempts) {
-                    const lane = Math.floor(Math.random() * 3);
-                    const laneWidth = canvas.width / 3;
-                    const x = 50 + (lane * laneWidth) + (laneWidth / 2) - 40;
-                    const y = -80 - (index * 200);
-                    
-                    // Check if this position would overlap with any obstacle
-                    if (!wouldOverlapWithObstacles(x, y, 80, 80)) {
-                        collectible = new Collectible(0, part, lane);
-                        collectible.y = y;
-                        collectibles.push(collectible);
-                    }
-                    attempts++;
-                }
-                
-                // If we couldn't find a non-overlapping position, place it anyway
-                if (!collectible) {
-                    const lane = Math.floor(Math.random() * 3);
-                    collectible = new Collectible(0, part, lane);
-                    collectible.y = -80 - (index * 200);
-                    collectibles.push(collectible);
-                }
-            });
+            // Regenerate all collectibles (target + distractors)
+            generateCollectibles(currentWord);
         }
     }
 
@@ -469,11 +880,8 @@ function generateGameElements() {
     collectibles = collectibles.filter(c => c.y < canvas.height + c.height || c.collected);
 }
 
-// Show word review (below canvas, auto-hide after 2 seconds)
-function showWordReview() {
-    isPaused = true;
-    gameState = 'reviewing';
-    
+// Update word review display (always visible at bottom)
+function updateWordReview() {
     const wordList = getCurrentWordList();
     const word = wordList[currentWordIndex];
     
@@ -490,59 +898,24 @@ function showWordReview() {
         reviewParts.appendChild(span);
     });
     
-    // Show review area
+    // Show review area (always visible)
     document.getElementById('targetWordReview').style.display = 'block';
-    
-    // Auto-hide after 2 seconds and continue
-    setTimeout(() => {
-        hideWordReview();
-    }, 2000);
-}
-
-// Hide word review and continue game
-function hideWordReview() {
-    document.getElementById('targetWordReview').style.display = 'none';
-    isPaused = false;
-    
-    // Check if we need to load next word (if word was just completed)
-    const wordList = getCurrentWordList();
-    const currentWord = wordList[currentWordIndex];
-    
-    // Check if current word is completed
-    if (currentWord && collectedParts.length >= currentWord.parts.length) {
-        // Word was completed, load next word
-        const nextIndex = currentWordIndex + 1;
-        if (nextIndex < wordList.length) {
-            loadWord(nextIndex);
-            // Show review for next word
-            setTimeout(() => {
-                showWordReview();
-            }, 100);
-        } else {
-            // All words completed, restart
-            loadWord(0);
-            setTimeout(() => {
-                showWordReview();
-            }, 100);
-        }
-    } else {
-        // Resume game (either initial start or mid-word)
-        gameState = 'playing';
-        if (!gameStartTime) {
-            gameStartTime = Date.now();
-        }
-        gameLoop();
-    }
-}
-
-// Pause game and show review after word completion
-function pauseGameAndShowReview() {
-    showWordReview();
 }
 
 // Game loop
 function gameLoop() {
-    if (gameState !== 'playing' || isPaused) return;
+    if (gameState !== 'playing' || isPaused) {
+        if (gameState === 'playing' && isPaused) {
+            // Still draw the game when paused (frozen frame)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            player.draw();
+            obstacles.forEach(obs => obs.draw());
+            collectibles.forEach(collectible => collectible.draw());
+        }
+        animationFrameId = requestAnimationFrame(gameLoop);
+        return;
+    }
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -550,44 +923,68 @@ function gameLoop() {
     // Draw background
     drawBackground();
 
-    // Update and draw player
-    player.update();
+    // Update and draw player (only update if not paused)
+    if (!isPaused) {
+        player.update();
+    }
     player.draw();
 
-    // Update and draw obstacles
+    // Update and draw obstacles (only update if not paused)
+    // Filter out hit obstacles that are being removed
+    obstacles = obstacles.filter(obs => !obs.hit || obs.y < canvas.height + obs.height);
     obstacles.forEach(obs => {
-        obs.update();
-        obs.draw();
+        if (!isPaused) {
+            obs.update();
+        }
+        // Only draw if not hit (or if hit but still on screen during removal)
+        if (!obs.hit) {
+            obs.draw();
+        }
     });
 
-    // Update and draw collectibles
+    // Update and draw collectibles (only update if not paused)
     collectibles.forEach(collectible => {
-        collectible.update();
+        if (!isPaused) {
+            collectible.update();
+        }
         collectible.draw();
     });
 
-    // Generate new elements
-    generateGameElements();
-
-    // Check collisions
-    checkCollisions();
-
-    // Update distance and score
-    distance += gameSpeed / 10;
-    if (Math.floor(distance) % 10 === 0) {
-        score += 1;
-        updateUI();
+    // Generate new elements (only if not paused)
+    if (!isPaused) {
+        generateGameElements();
+        // Check collisions
+        checkCollisions();
     }
 
-    // Automatically increase speed by 0.01 every 20 seconds
-    const elapsedSeconds = (Date.now() - gameStartTime) / 1000;
-    const speedIncrease = Math.floor(elapsedSeconds / 20) * 0.01;
-    gameSpeed = 1.0 + speedIncrease;
-    
-    // Update speed display
-    const speedValueEl = document.getElementById('speedValue');
-    if (speedValueEl) {
-        speedValueEl.textContent = gameSpeed.toFixed(2) + 'x';
+    // Update distance and score (only if not paused)
+    if (!isPaused) {
+        distance += gameSpeed / 10;
+        if (Math.floor(distance) % 10 === 0) {
+            score += 1;
+            updateUI();
+        }
+
+        // Automatically increase speed by 0.01 every 20 seconds
+        // Only calculate if game is actually playing and gameStartTime is valid (not 0)
+        if (gameState === 'playing' && gameStartTime > 0) {
+            const elapsedSeconds = (Date.now() - gameStartTime) / 1000;
+            const speedIncrease = Math.floor(elapsedSeconds / 20) * 0.01;
+            gameSpeed = 1.0 + speedIncrease;
+            
+            // Update speed display
+            const speedValueEl = document.getElementById('speedValue');
+            if (speedValueEl) {
+                speedValueEl.textContent = gameSpeed.toFixed(2) + 'x';
+            }
+        } else {
+            // If game is not playing or gameStartTime is 0, keep speed at 1.0
+            gameSpeed = 1.0;
+            const speedValueEl = document.getElementById('speedValue');
+            if (speedValueEl) {
+                speedValueEl.textContent = '1.00x';
+            }
+        }
     }
 
     // Update speeds based on current gameSpeed
@@ -595,7 +992,7 @@ function gameLoop() {
     collectibles.forEach(c => c.speed = gameSpeed);
 
     // Continue game loop
-    requestAnimationFrame(gameLoop);
+    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 // Draw background (top-down view)
@@ -656,6 +1053,7 @@ function drawBackground() {
 // Game over
 function gameOver() {
     gameState = 'gameover';
+    soundManager.playGameOver();
     document.getElementById('gameScreen').style.display = 'none';
     document.getElementById('gameOverScreen').style.display = 'flex';
     document.getElementById('finalScore').textContent = score;
@@ -663,10 +1061,47 @@ function gameOver() {
     document.getElementById('distance').textContent = Math.floor(distance);
 }
 
+// Pause/Resume functions
+function pauseGame() {
+    if (gameState === 'playing' && !isPaused) {
+        isPaused = true;
+        const pauseScreen = document.getElementById('pauseScreen');
+        if (pauseScreen) {
+            pauseScreen.style.display = 'flex';
+        }
+    }
+}
+
+function resumeGame() {
+    if (gameState === 'playing' && isPaused) {
+        isPaused = false;
+        const pauseScreen = document.getElementById('pauseScreen');
+        if (pauseScreen) {
+            pauseScreen.style.display = 'none';
+        }
+    }
+}
+
 // Event listeners
 document.addEventListener('keydown', (e) => {
-    keys[e.key] = true;
-    e.preventDefault();
+    // Handle ESC key for pause/resume
+    if (e.key === 'Escape' || e.key === 'Esc') {
+        if (gameState === 'playing') {
+            if (isPaused) {
+                resumeGame();
+            } else {
+                pauseGame();
+            }
+        }
+        e.preventDefault();
+        return;
+    }
+    
+    // Don't register movement keys when paused
+    if (!isPaused) {
+        keys[e.key] = true;
+        e.preventDefault();
+    }
 });
 
 document.addEventListener('keyup', (e) => {
@@ -716,6 +1151,42 @@ function setupTouchControls() {
     });
 }
 
+// Initialize speech synthesis voices (needed for some browsers)
+if ('speechSynthesis' in window) {
+    // Load voices when they become available
+    let voicesLoaded = false;
+    const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0 && !voicesLoaded) {
+            voicesLoaded = true;
+            // Log available voices for debugging
+            console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+            // Check for Korean and Chinese voices
+            const koreanVoices = voices.filter(v => v.lang.startsWith('ko'));
+            const chineseVoices = voices.filter(v => v.lang.startsWith('zh'));
+            if (koreanVoices.length > 0) {
+                console.log('Korean voices found:', koreanVoices.map(v => `${v.name} (${v.lang})`));
+            } else {
+                console.warn('No Korean voices found. Korean speech may not work properly.');
+            }
+            if (chineseVoices.length > 0) {
+                console.log('Chinese voices found:', chineseVoices.map(v => `${v.name} (${v.lang})`));
+            } else {
+                console.warn('No Chinese voices found. Chinese speech may not work properly.');
+            }
+        }
+    };
+    
+    // Some browsers load voices asynchronously
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    loadVoices(); // Try to load immediately
+    
+    // Also try loading after a short delay (some browsers need this)
+    setTimeout(loadVoices, 500);
+}
+
 // Start button
 document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById('startBtn');
@@ -725,16 +1196,87 @@ document.addEventListener('DOMContentLoaded', () => {
             const gameScreen = document.getElementById('gameScreen');
             
             if (startScreen && gameScreen) {
+                // Stop any existing game loop first
+                if (animationFrameId !== null) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                gameState = 'start';
+                isPaused = false;
+                
+                // Reset game state variables (but don't set gameStartTime here - let initGame() do it)
+                gameSpeed = 1.0;
+                gameStartTime = 0; // Set to 0 to prevent speed calculation until initGame() sets it
+                score = 0;
+                distance = 0;
+                wordsCompleted = 0;
+                currentWordIndex = 0;
+                collectedParts = [];
+                obstacles = [];
+                collectibles = [];
+                health = 5;
+                playerHurtTime = 0;
+                
+                // Update speed display immediately
+                const speedValueEl = document.getElementById('speedValue');
+                if (speedValueEl) {
+                    speedValueEl.textContent = '1.00x';
+                }
+                
                 startScreen.style.display = 'none';
                 gameScreen.style.display = 'block';
-                gameState = 'playing';
                 
-                // Small delay to ensure DOM is ready
+                // Resume audio context (needed for user interaction)
+                soundManager.resume();
+                
+                // Small delay to ensure DOM is ready and old loop stops
                 setTimeout(() => {
                     initGame();
                 }, 100);
             } else {
                 console.error('Start screen or game screen not found!');
+            }
+        });
+    }
+    
+    // Resume button (from pause screen)
+    const resumeBtn = document.getElementById('resumeBtn');
+    if (resumeBtn) {
+        resumeBtn.addEventListener('click', () => {
+            resumeGame();
+        });
+    }
+    
+    // Menu button (from pause screen)
+    const menuBtnPause = document.getElementById('menuBtnPause');
+    if (menuBtnPause) {
+        menuBtnPause.addEventListener('click', () => {
+            const startScreen = document.getElementById('startScreen');
+            const gameScreen = document.getElementById('gameScreen');
+            const pauseScreen = document.getElementById('pauseScreen');
+            
+            if (startScreen && gameScreen && pauseScreen) {
+                // Stop any existing game loop first
+                if (animationFrameId !== null) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                
+                pauseScreen.style.display = 'none';
+                gameScreen.style.display = 'none';
+                startScreen.style.display = 'block';
+                gameState = 'start';
+                isPaused = false;
+                
+                // CRITICAL: Reset speed and start time to prevent speed accumulation
+                gameSpeed = 1.0;
+                gameStartTime = 0;
+                
+                // Update speed display immediately
+                const speedValueEl = document.getElementById('speedValue');
+                if (speedValueEl) {
+                    speedValueEl.textContent = '1.00x';
+                }
             }
         });
     } else {
@@ -749,9 +1291,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const startScreen = document.getElementById('startScreen');
             
             if (gameOverScreen && startScreen) {
+                // Stop any existing game loop first
+                if (animationFrameId !== null) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                
                 gameOverScreen.style.display = 'none';
                 startScreen.style.display = 'flex';
                 gameState = 'start';
+                
+                // Reset game state variables
+                gameSpeed = 1.0;
+                gameStartTime = 0;
+                score = 0;
+                distance = 0;
+                wordsCompleted = 0;
+                currentWordIndex = 0;
+                collectedParts = [];
+                obstacles = [];
+                collectibles = [];
+                health = 5;
+                isPaused = false;
+                playerHurtTime = 0;
+                
+                // Reset speed display immediately
+                const speedValueEl = document.getElementById('speedValue');
+                if (speedValueEl) {
+                    speedValueEl.textContent = '1.00x';
+                }
             }
         });
     }

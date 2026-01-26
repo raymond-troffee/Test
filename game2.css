@@ -142,6 +142,21 @@ body {
     color: #FFD700;
 }
 
+.health-display {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.health-heart {
+    font-size: 20px;
+    transition: transform 0.2s;
+}
+
+.health-heart.filled {
+    filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.5));
+}
+
 .word-progress {
     flex: 1;
     margin: 0 20px;
@@ -342,6 +357,77 @@ body {
     font-family: monospace;
 }
 
+
+/* Pause Screen */
+.pause-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.pause-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    max-width: 400px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.pause-content h2 {
+    font-size: 36px;
+    color: #ffffff;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.pause-content p {
+    font-size: 18px;
+    color: #f0f0f0;
+    margin-bottom: 10px;
+}
+
+.resume-btn, .menu-btn-pause {
+    padding: 12px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin: 5px;
+}
+
+.resume-btn {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: #ffffff;
+}
+
+.menu-btn-pause {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: #ffffff;
+}
+
+.resume-btn:hover, .menu-btn-pause:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.resume-btn:active, .menu-btn-pause:active {
+    transform: scale(0.98);
+}
 
 /* Game Over Screen */
 .game-over-screen {

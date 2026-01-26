@@ -33,6 +33,13 @@
                         <div class="progress-fill" id="progressFill"></div>
                     </div>
                 </div>
+                <div class="health-display" id="healthDisplay">
+                    <span class="health-heart filled">❤️</span>
+                    <span class="health-heart filled">❤️</span>
+                    <span class="health-heart filled">❤️</span>
+                    <span class="health-heart filled">❤️</span>
+                    <span class="health-heart filled">❤️</span>
+                </div>
                 <div class="language-toggle">
                     <label class="toggle-switch">
                         <input type="checkbox" id="languageToggle">
@@ -62,6 +69,16 @@
                 <div class="control-hint">
                     <span>← →</span> Move Left/Right
                 </div>
+            </div>
+        </div>
+
+        <!-- Pause Screen -->
+        <div class="pause-screen" id="pauseScreen" style="display: none;">
+            <div class="pause-content">
+                <h2>Paused</h2>
+                <p>Press ESC to resume</p>
+                <button class="resume-btn" id="resumeBtn">Resume</button>
+                <button class="menu-btn-pause" id="menuBtnPause">Main Menu</button>
             </div>
         </div>
 
