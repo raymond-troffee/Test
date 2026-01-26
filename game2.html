@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Runner - 学中文</title>
+    <link rel="stylesheet" href="game2.css">
+</head>
+<body>
+    <div class="game-wrapper">
+        <!-- Start Screen -->
+        <div class="start-screen" id="startScreen">
+            <h1>学中文</h1>
+            <h2>Word Runner</h2>
+            <div class="target-word-display">
+                <p class="instruction">Collect the parts to form:</p>
+                <div class="target-word" id="targetWord"></div>
+                <div class="word-parts-preview" id="wordPartsPreview"></div>
+            </div>
+            <button class="start-btn" id="startBtn">开始游戏</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div class="game-screen" id="gameScreen" style="display: none;">
+            <!-- Game UI -->
+            <div class="game-ui">
+                <div class="score-display">
+                    <span>Score: <span id="score">0</span></span>
+                </div>
+                <div class="word-progress">
+                    <div class="current-word" id="currentWord"></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+                <div class="language-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="languageToggle">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label" id="toggleLabel">Mandarin</span>
+                    </label>
+                </div>
+                <div class="speed-display">
+                    <span>Speed: <span id="speedValue">1.0x</span></span>
+                </div>
+            </div>
+
+            <!-- Game Canvas -->
+            <div class="game-container">
+                <canvas id="gameCanvas"></canvas>
+            </div>
+
+            <!-- Controls Info -->
+            <div class="controls-info">
+                <div class="control-hint">
+                    <span>← →</span> Move Left/Right
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div class="game-over-screen" id="gameOverScreen" style="display: none;">
+            <h2 id="gameOverTitle">Game Over!</h2>
+            <div class="final-stats">
+                <p>Score: <span id="finalScore">0</span></p>
+                <p>Words Completed: <span id="wordsCompleted">0</span></p>
+                <p>Distance: <span id="distance">0</span>m</p>
+            </div>
+            <button class="restart-btn" id="restartBtn">Play Again</button>
+            <button class="menu-btn" id="menuBtn">Main Menu</button>
+        </div>
+    </div>
+
+    <script src="game2.js"></script>
+</body>
+</html>

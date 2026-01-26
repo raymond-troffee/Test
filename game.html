@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Padankan Haiwan Safari</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Game Header -->
+        <div class="game-header">
+            <button class="info-btn">i</button>
+            <div class="level-display">Level <span id="currentLevel">1</span></div>
+            <div class="lives-score">
+                <div class="hearts" id="hearts">
+                    <span class="heart filled">❤️</span>
+                    <span class="heart filled">❤️</span>
+                    <span class="heart filled">❤️</span>
+                    <span class="heart">🤍</span>
+                </div>
+                <div class="star">⭐</div>
+            </div>
+        </div>
+
+        <!-- Instruction Bar -->
+        <div class="instruction-bar">
+            <span id="instructionText">Padankan 3 haiwan dengan gambar mereka</span>
+        </div>
+
+        <!-- Game Board -->
+        <div class="game-board" id="gameBoard">
+            <!-- Cards will be generated dynamically -->
+        </div>
+
+        <!-- Bottom Banner -->
+        <div class="bottom-banner">
+            <h1 class="game-title">PADANKAN HAIWAN SAFARI</h1>
+            <p class="game-subtitle">Padankan haiwan dengan bayang mereka di safari!</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
