@@ -31,7 +31,8 @@ const koreanWords = [
 ];
 
 // Game state
-let gameState = 'start'; // 'start', 'playing', 'gameover'
+let gameState = 'start'; // 'start', 'reviewing', 'playing', 'gameover'
+let isPaused = false;
 let canvas, ctx;
 let player;
 let obstacles = [];
@@ -223,8 +224,8 @@ function initGame() {
     // Load first word
     loadWord(0);
 
-    // Start game loop
-    gameLoop();
+    // Show word review before starting
+    showWordReview();
 }
 
 // Get current word list based on language
@@ -352,16 +353,27 @@ function checkWordComplete() {
             score += 50;
             updateUI();
             
-            // Show completion message briefly
-            const progressFill = document.getElementById('progressFill');
-            progressFill.style.background = 'linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%)';
-            
-            // Load next word
-            setTimeout(() => {
-                loadWord(currentWordIndex + 1);
-                progressFill.style.background = 'linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%)';
-            }, 1500);
+            // Wait for last collectible to disappear, then show review
+            waitForLastPartToDisappear();
         }
+    }
+}
+
+// Wait for the last collectible to disappear before showing review
+function waitForLastPartToDisappear() {
+    // Check if there are any visible collectibles still on screen
+    const visibleCollectibles = collectibles.filter(c => 
+        !c.collected && c.y < canvas.height + c.height && c.y > -c.height
+    );
+    
+    if (visibleCollectibles.length > 0) {
+        // Still have visible collectibles, wait a bit and check again
+        setTimeout(() => {
+            waitForLastPartToDisappear();
+        }, 100);
+    } else {
+        // All collectibles have disappeared, now show review
+        pauseGameAndShowReview();
     }
 }
 
@@ -457,9 +469,80 @@ function generateGameElements() {
     collectibles = collectibles.filter(c => c.y < canvas.height + c.height || c.collected);
 }
 
+// Show word review (below canvas, auto-hide after 2 seconds)
+function showWordReview() {
+    isPaused = true;
+    gameState = 'reviewing';
+    
+    const wordList = getCurrentWordList();
+    const word = wordList[currentWordIndex];
+    
+    // Update review display
+    document.getElementById('reviewWordLarge').textContent = word.word;
+    document.getElementById('reviewMeaningLarge').textContent = word.meaning;
+    
+    const reviewParts = document.getElementById('reviewPartsLarge');
+    reviewParts.innerHTML = '';
+    word.parts.forEach(part => {
+        const span = document.createElement('span');
+        span.className = 'review-part-large';
+        span.textContent = part;
+        reviewParts.appendChild(span);
+    });
+    
+    // Show review area
+    document.getElementById('targetWordReview').style.display = 'block';
+    
+    // Auto-hide after 2 seconds and continue
+    setTimeout(() => {
+        hideWordReview();
+    }, 2000);
+}
+
+// Hide word review and continue game
+function hideWordReview() {
+    document.getElementById('targetWordReview').style.display = 'none';
+    isPaused = false;
+    
+    // Check if we need to load next word (if word was just completed)
+    const wordList = getCurrentWordList();
+    const currentWord = wordList[currentWordIndex];
+    
+    // Check if current word is completed
+    if (currentWord && collectedParts.length >= currentWord.parts.length) {
+        // Word was completed, load next word
+        const nextIndex = currentWordIndex + 1;
+        if (nextIndex < wordList.length) {
+            loadWord(nextIndex);
+            // Show review for next word
+            setTimeout(() => {
+                showWordReview();
+            }, 100);
+        } else {
+            // All words completed, restart
+            loadWord(0);
+            setTimeout(() => {
+                showWordReview();
+            }, 100);
+        }
+    } else {
+        // Resume game (either initial start or mid-word)
+        gameState = 'playing';
+        if (!gameStartTime) {
+            gameStartTime = Date.now();
+        }
+        gameLoop();
+    }
+}
+
+// Pause game and show review after word completion
+function pauseGameAndShowReview() {
+    showWordReview();
+}
+
 // Game loop
 function gameLoop() {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' || isPaused) return;
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
